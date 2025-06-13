@@ -29,6 +29,8 @@ module RubyLsp
 
       sig { params(global_state: RubyLsp::GlobalState, message_queue: Thread::Queue).void }
       def activate(global_state, message_queue)
+        return unless are_required_libraries_installed?
+
         @message_queue = message_queue
         @global_state = global_state
         @settings = @global_state.settings_for_addon(name) || {}
@@ -65,6 +67,14 @@ module RubyLsp
       sig { returns(String) }
       def version
         RubyLsp::Cell::VERSION
+      end
+
+      def are_required_libraries_installed?
+        Bundler.definition.specs.any? do |spec|
+          spec.name == "cells"
+        end
+      rescue Bundler::GemNotFound
+        false
       end
     end
   end

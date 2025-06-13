@@ -35,9 +35,9 @@ module RubyLsp
 
         assert_equal 1, response.count
 
-        assert_equal "goToFile", response[0].data[:type]
+        assert_equal "file", response[0].data[:type]
         assert_equal "Go to show", response[0].command.title
-        assert_equal "/test/show.erb", response[0].command.arguments[0]
+        assert_equal ["file:///test/show.erb"], response[0].command.arguments[0]
         assert_equal 4, response[0].range.start.line
         assert_equal 4, response[0].range.end.line
       end
@@ -145,27 +145,27 @@ module RubyLsp
 
         assert_equal 4, response.count
 
-        assert_equal "goToFile", response[0].data[:type]
+        assert_equal "file", response[0].data[:type]
         assert_equal "Go to show", response[0].command.title
-        assert_equal "/test/show.erb", response[0].command.arguments[0]
+        assert_equal ["file:///test/show.erb"], response[0].command.arguments[0]
         assert_equal 4, response[0].range.start.line
         assert_equal 22, response[0].range.end.line
 
-        assert_equal "goToFile", response[1].data[:type]
+        assert_equal "file", response[1].data[:type]
         assert_equal "Go to edit", response[1].command.title
-        assert_equal "/test/edit.erb", response[1].command.arguments[0]
+        assert_equal ["file:///test/edit.erb"], response[1].command.arguments[0]
         assert_equal 5, response[1].range.start.line
         assert_equal 7, response[1].range.end.line
 
-        assert_equal "goToFile", response[2].data[:type]
+        assert_equal "file", response[2].data[:type]
         assert_equal "Go to show", response[2].command.title
-        assert_equal "/test/show.erb", response[2].command.arguments[0]
+        assert_equal ["file:///test/show.erb"], response[2].command.arguments[0]
         assert_equal 9, response[2].range.start.line
         assert_equal 11, response[2].range.end.line
 
-        assert_equal "goToFile", response[3].data[:type]
+        assert_equal "file", response[3].data[:type]
         assert_equal "Go to index", response[3].command.title
-        assert_equal "/test/index.erb", response[3].command.arguments[0]
+        assert_equal ["file:///test/index.erb"], response[3].command.arguments[0]
         assert_equal 13, response[3].range.start.line
         assert_equal 15, response[3].range.end.line
       end
@@ -199,9 +199,9 @@ module RubyLsp
 
         assert_equal 1, response.count
 
-        assert_equal "goToFile", response[0].data[:type]
+        assert_equal "file", response[0].data[:type]
         assert_equal "Go to edit", response[0].command.title
-        assert_equal "/test/edit.erb", response[0].command.arguments[0]
+        assert_equal ["file:///test/edit.erb"], response[0].command.arguments[0]
         assert_equal 4, response[0].range.start.line
         assert_equal 4, response[0].range.end.line
       end

@@ -33,28 +33,29 @@ module RubyLsp
         @class_name = T.let("", String)
         @pattern = T.let("_cell", String)
         @default_view_filename = T.let(default_view_filename, String)
-        dispatcher.register(self, :on_class_node_enter, :on_def_node_leave)
+        @in_cell_class = T.let(false, T::Boolean)
+        dispatcher.register(self, :on_class_node_enter, :on_class_node_leave, :on_def_node_enter)
       end
 
       sig { params(node: Prism::ClassNode).void }
       def on_class_node_enter(node)
-        @class_name = node.constant_path.slice
-        return unless @class_name.end_with?("Cell")
-        return unless @global_state.index.linearized_ancestors_of(@class_name).include?("Cell::ViewModel")
+        class_name = node.constant_path.slice
+        return unless class_name.end_with?("Cell")
+        return unless @global_state.index.linearized_ancestors_of(class_name).include?("Cell::ViewModel")
 
+        @in_cell_class = true
         add_default_goto_code_lens(node)
       end
 
       sig { params(node: Prism::ClassNode).void }
       def on_class_node_leave(node)
-        @class_name = ""
+        @in_cell_class = false
       end
 
       sig { params(node: Prism::DefNode).void }
-      def on_def_node_leave(node)
-        return unless @class_name.end_with?("Cell")
+      def on_def_node_enter(node)
+        return unless @in_cell_class
         return unless contains_render_call?(node.body)
-        return unless @global_state.index.linearized_ancestors_of(@class_name).include?("Cell::ViewModel")
 
         add_function_goto_code_lens(node, node.name.to_s)
       end
@@ -63,44 +64,27 @@ module RubyLsp
 
       sig { params(node: Prism::Node).void }
       def add_default_goto_code_lens(node)
-        return unless are_required_libraries_installed?
-
         erb_filename = remove_last_pattern_in_string @default_view_filename, ".erb"
         uri = compute_erb_view_path @default_view_filename
 
-        @response_builder << create_code_lens(
-          node,
-          title: "Go to #{erb_filename}",
-          command_name: "vscode.open",
-          arguments: [uri],
-          data: { type: "goToFile" },
-        )
+        create_go_to_file_code_lens(node, erb_filename, uri)
       end
 
       sig { params(node: T.nilable(Prism::Node)).returns(T::Boolean) }
       def contains_render_call?(node)
         return false if node.nil?
 
-        return true if node.is_a?(Prism::CallNode) &&
-          node.receiver.nil? &&
-          node.message == "render"
+        if node.is_a?(Prism::CallNode)
+          return true if node.receiver.nil? && node.name == :render
+        end
 
         node.child_nodes.any? { |child| contains_render_call?(child) }
       end
 
       sig { params(node: Prism::Node, name: String).void }
       def add_function_goto_code_lens(node, name)
-        return unless are_required_libraries_installed?
-
         uri = compute_erb_view_path("#{name}.erb")
-
-        @response_builder << create_code_lens(
-          node,
-          title: "Go to #{name}",
-          command_name: "vscode.open",
-          arguments: [uri],
-          data: { type: "goToFile" },
-        )
+        create_go_to_file_code_lens(node, name, uri)
       end
 
       sig { params(string: String, pattern: String).returns(String) }
@@ -113,12 +97,20 @@ module RubyLsp
         escaped_pattern = Regexp.escape(@pattern)
         base_path = @path.sub(/#{escaped_pattern}\.rb$/, "")
         folder = File.basename(base_path)
-        File.join(File.dirname(base_path), folder, name)
+        path = File.join(File.dirname(base_path), folder, name)
+        uri = URI::Generic.from_path(path: path).to_s
+        uri
       end
 
-      sig { returns(T::Boolean) }
-      def are_required_libraries_installed?
-        Bundler.locked_gems.dependencies.keys.include?(REQUIRED_LIBRARY)
+      sig { params(node: Prism::Node, name: String, uri: String).void }
+      def create_go_to_file_code_lens(node, name, uri)
+        @response_builder << create_code_lens(
+          node,
+          title: "Go to #{name}",
+          command_name: "rubyLsp.openFile",
+          arguments: [[uri]],
+          data: { type: "file" },
+        )
       end
     end
   end

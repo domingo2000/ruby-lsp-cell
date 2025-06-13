@@ -36,7 +36,7 @@ module RubyLsp
         assert_equal 1, response.count
 
         assert_equal "file", response[0].data[:type]
-        assert_equal "Go to show", response[0].command.title
+        assert_equal "Go to view", response[0].command.title
         assert_equal ["file:///test/show.erb"], response[0].command.arguments[0]
         assert_equal 4, response[0].range.start.line
         assert_equal 4, response[0].range.end.line
@@ -101,31 +101,14 @@ module RubyLsp
       end
     end
 
-    def test_functions
-      uri = URI("file:///test_cell.rb")
+    def test_cell_class_with_views
+      uri = URI("file:///#{Dir.pwd}/test/fixtures/foo_cell.rb")
       source = <<~RUBY
         module Cell
           class ViewModel; end
         end
 
-        class TestCell < Cell::ViewModel
-          def edit
-            render
-          end
-
-          def show
-            render
-          end
-
-          def index
-            render params
-          end
-
-          def destroy; end
-
-          def new
-            render_fake
-          end
+        class FooCell < Cell::ViewModel
         end
       RUBY
 
@@ -143,31 +126,51 @@ module RubyLsp
         server.pop_response
         response = server.pop_response.response
 
-        assert_equal 4, response.count
+        assert_equal 1, response.count
 
         assert_equal "file", response[0].data[:type]
-        assert_equal "Go to show", response[0].command.title
-        assert_equal ["file:///test/show.erb"], response[0].command.arguments[0]
+        assert_equal "Go to view", response[0].command.title
+        assert_equal [
+          "file://#{Dir.pwd}/test/fixtures/foo/edit.erb",
+          "file://#{Dir.pwd}/test/fixtures/foo/show.erb",
+        ],
+          response[0].command.arguments[0]
         assert_equal 4, response[0].range.start.line
-        assert_equal 22, response[0].range.end.line
+        assert_equal 5, response[0].range.end.line
+      end
+    end
 
-        assert_equal "file", response[1].data[:type]
-        assert_equal "Go to edit", response[1].command.title
-        assert_equal ["file:///test/edit.erb"], response[1].command.arguments[0]
-        assert_equal 5, response[1].range.start.line
-        assert_equal 7, response[1].range.end.line
+    def test_cell_class_with_no_views
+      uri = URI("file:///#{Dir.pwd}/test/fixtures/bar_cell.rb")
+      source = <<~RUBY
+        module Cell
+          class ViewModel; end
+        end
 
-        assert_equal "file", response[2].data[:type]
-        assert_equal "Go to show", response[2].command.title
-        assert_equal ["file:///test/show.erb"], response[2].command.arguments[0]
-        assert_equal 9, response[2].range.start.line
-        assert_equal 11, response[2].range.end.line
+        class BarCell < Cell::ViewModel; end
+      RUBY
 
-        assert_equal "file", response[3].data[:type]
-        assert_equal "Go to index", response[3].command.title
-        assert_equal ["file:///test/index.erb"], response[3].command.arguments[0]
-        assert_equal 13, response[3].range.start.line
-        assert_equal 15, response[3].range.end.line
+      with_server(source, uri) do |server, uri|
+        server.process_message(
+          {
+            id: 1,
+            method: "textDocument/codeLens",
+            params: {
+              textDocument: { uri: uri },
+              position: { line: 0, character: 0 },
+            },
+          },
+        )
+        server.pop_response
+        response = server.pop_response.response
+
+        assert_equal 1, response.count
+
+        assert_equal "file", response[0].data[:type]
+        assert_equal "Go to view", response[0].command.title
+        assert_equal ["file://#{Dir.pwd}/test/fixtures/bar/show.erb"], response[0].command.arguments[0]
+        assert_equal 4, response[0].range.start.line
+        assert_equal 4, response[0].range.end.line
       end
     end
 
@@ -200,7 +203,7 @@ module RubyLsp
         assert_equal 1, response.count
 
         assert_equal "file", response[0].data[:type]
-        assert_equal "Go to edit", response[0].command.title
+        assert_equal "Go to view", response[0].command.title
         assert_equal ["file:///test/edit.erb"], response[0].command.arguments[0]
         assert_equal 4, response[0].range.start.line
         assert_equal 4, response[0].range.end.line
